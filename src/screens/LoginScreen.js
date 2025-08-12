@@ -1,62 +1,49 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, Button, TouchableOpacity,
-  StyleSheet, Image, Alert,
+  StyleSheet, Image, Alert, Platform, ToastAndroid,
 } from 'react-native';
-import { Platform, ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import { loginUser } from '../../utils/dbHelpers'; // SQLite helper
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-const handleLogin = async () => {
-  try {
-    const response = await axios.post('http://10.0.2.2:8000/api/login/', {
-      email,
-      password,
-    });
-
-    const { access, refresh } = response.data;
-
-    await AsyncStorage.setItem('access_token', access);
-    await AsyncStorage.setItem('refresh_token', refresh);
-
-    // Get user profile
-    const profileRes = await axios.get('http://10.0.2.2:8000/api/user/profile/', {
-      headers: { Authorization: `Bearer ${access}` },
-    });
-
-    const { name, level, last_subject } = profileRes.data;
-    if (name) await AsyncStorage.setItem('user_name', name);
-    if (level) await AsyncStorage.setItem('user_level', level.toString());
-    if (last_subject) await AsyncStorage.setItem('user_last_subject', last_subject);
-
-    // Toast or Alert
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('✅ Login Successful', ToastAndroid.SHORT);
-    } else {
-      Alert.alert('✅ Login Successful');
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('❌ Error', 'Please enter email and password');
+      return;
     }
 
-    navigation.replace('Main');
-  } catch (error) {
-    console.error('Login error:', error.response?.data || error.message);
+    try {
+      const user = await loginUser(email.trim(), password);
 
-    let errorMessage = 'Login failed. Please try again.';
-    if (error.response?.data?.non_field_errors) {
-      errorMessage = error.response.data.non_field_errors[0];
-    } else if (error.response?.data?.detail) {
-      errorMessage = error.response.data.detail;
+      if (!user) {
+        Alert.alert('❌ Login Failed', 'Invalid email or password.');
+        return;
+      }
+
+      // Save user info for global access
+      await AsyncStorage.multiSet([
+        ['current_user', JSON.stringify(user)],
+        ['user_name', user.name || ''],
+        ['user_level', user.level ? String(user.level) : '1'],
+        ['user_last_subject', user.lastSubject || 'Maths']
+      ]);
+
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('✅ Login Successful', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('✅ Login Successful');
+      }
+
+      navigation.replace('Main'); // Navigate to the dashboard stack
+    } catch (err) {
+      console.error('Login error:', err);
+      Alert.alert('❌ Error', 'Something went wrong. Please try again.');
     }
-
-    Alert.alert('❌ Login Failed', errorMessage);
-  }
-};
-
-
-
+  };
 
   return (
     <View style={styles.container}>
@@ -107,8 +94,6 @@ const handleLogin = async () => {
 };
 
 export default LoginScreen;
-
-// Styles remain unchanged...
 
 const styles = StyleSheet.create({
   container: {

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import HeaderTitle from '../components/HeaderTitle';
+import db from '../helpers/dbhelper'; // ✅ Import SQLite helper
 
 const DashboardScreen = () => {
   const navigation = useNavigation();
@@ -19,32 +24,48 @@ const DashboardScreen = () => {
     lastSubject: '',
   });
 
+  // ✅ Load user from SQLite instead of AsyncStorage
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const name = await AsyncStorage.getItem('user_name');
-        const level = await AsyncStorage.getItem('user_level');
-        const lastSubject = await AsyncStorage.getItem('user_last_subject');
-
-        setUser({
-          name: name || 'Guest',
-          level: level || '1',
-          lastSubject: lastSubject || 'Maths',
-        });
-      } catch (error) {
-        console.log('Error loading user:', error);
-      } finally {
-        setLoading(false);
-      }
+    const fetchUser = () => {
+      db.transaction((tx) => {
+        tx.executeSql(
+          'SELECT name, level, last_subject FROM users WHERE is_logged_in = 1 LIMIT 1;',
+          [],
+          (_, results) => {
+            if (results.rows.length > 0) {
+              const { name, level, last_subject } = results.rows.item(0);
+              setUser({
+                name: name || 'Guest',
+                level: level || '1',
+                lastSubject: last_subject || 'Maths',
+              });
+            } else {
+              setUser({ name: 'Guest', level: '1', lastSubject: 'Maths' });
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.log('Error loading user from DB:', error);
+            setLoading(false);
+          }
+        );
+      });
     };
 
     fetchUser();
   }, []);
 
-  const handleLogout = async () => {
+  // ✅ Logout: update DB instead of clearing AsyncStorage
+  const handleLogout = () => {
     setShowOptions(false);
-    await AsyncStorage.clear();
-    navigation.replace('Login');
+    db.transaction((tx) => {
+      tx.executeSql(
+        'UPDATE users SET is_logged_in = 0 WHERE is_logged_in = 1;',
+        [],
+        () => navigation.replace('Login'),
+        (error) => console.log('Error logging out:', error)
+      );
+    });
   };
 
   const navigateToLastSubject = () => {
@@ -63,7 +84,12 @@ const DashboardScreen = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
         <ActivityIndicator size="large" color="#001F54" />
       </View>
     );
@@ -89,10 +115,12 @@ const DashboardScreen = () => {
       {/* Options Dropdown */}
       {showOptions && (
         <View style={styles.popup}>
-          <TouchableOpacity onPress={() => {
-            setShowOptions(false);
-            navigation.navigate('AboutCompany');
-          }}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowOptions(false);
+              navigation.navigate('AboutCompany');
+            }}
+          >
             <Text style={styles.popupText}>About Company</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleLogout}>
@@ -112,7 +140,8 @@ const DashboardScreen = () => {
                 onPress={() => {
                   setShowMenu(false);
                   navigation.navigate(item);
-                }}>
+                }}
+              >
                 <Text style={styles.menuItem}>{item}</Text>
               </TouchableOpacity>
             ))}
@@ -138,19 +167,31 @@ const DashboardScreen = () => {
         </View>
 
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Subjects')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate('Subjects')}
+          >
             <Text style={styles.cardText}>Subjects</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('LeaderBoard')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate('LeaderBoard')}
+          >
             <Text style={styles.cardText}>Leader Board</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Profile')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate('Profile')}
+          >
             <Text style={styles.cardText}>Profile</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={() => alert('Update App feature coming soon')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => alert('Update App feature coming soon')}
+          >
             <Text style={styles.cardText}>Update App</Text>
           </TouchableOpacity>
         </View>

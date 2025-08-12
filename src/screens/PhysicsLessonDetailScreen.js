@@ -1,10 +1,17 @@
 // screens/PhysicsLessonDetailScreen.js
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState, useContext} from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert} from 'react-native';
+import Colors from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import HeaderTitle from '../components/HeaderTitle'; 
+import HeaderTitle from '../components/HeaderTitle'; // Shared header
+import { AuthContext } from '../context/AuthContext'; 
+import { getDBConnection, getLessons, insertLesson, saveUserScoreOffline } from '../utils/dbHelper';
+
+
+// Hardcoded lession details
+
 
 const lessons = [
   {
@@ -682,7 +689,7 @@ Magnetism is the force exerted by magnets when they attract or repel each other.
 
 ---
 
-🔌 **Uses in Daily Life**
+🔌 Uses in Daily Life
 - Charging phones (electricity)
 - Fans, TVs, bulbs (electric circuits)
 - Credit card strips, electric bells, MRI (magnetism)
@@ -725,12 +732,22 @@ Magnetism is the force exerted by magnets when they attract or repel each other.
 
 const PhysicsLessonDetailScreen = ({ route }) => {
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext); // get logged-in user from context
   const { topicIndex } = route.params;
-  const lesson =    lessons[topicIndex];
+  const lesson = agricLessons[topicIndex];
 
-  const handleAnswer = (userAnswer, correctAnswer) => {
-    if (userAnswer === correctAnswer) {
+  const handleAnswer = async (userAnswer, correctAnswer) => {
+    const isCorrect = userAnswer === correctAnswer;
+
+    if (isCorrect) {
       Alert.alert('✅ Correct!', 'Great job!');
+
+      try {
+        // Save score locally in SQLite / offline DB
+        await saveUserScoreOffline(user?.id, 'Physics', 5);
+      } catch (error) {
+        console.log('Offline score save failed:', error.message || error);
+      }
     } else {
       Alert.alert('❌ Incorrect', `The correct answer is: ${correctAnswer}`);
     }
@@ -738,7 +755,7 @@ const PhysicsLessonDetailScreen = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* 🔵 Header with back button */}
+      {/* Blue header with back button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#fff" />
@@ -746,14 +763,14 @@ const PhysicsLessonDetailScreen = ({ route }) => {
         <Text style={styles.headerTitle}>Lesson</Text>
       </View>
 
-      {/* ✅ Lesson Content */}
-      <Text style={styles.title}>{lesson?.title}</Text>
-      <Text style={styles.content}>{lesson?.content}</Text>
-      <Text style={styles.conclusion}>{lesson?.conclusion}</Text>
+      {/* Lesson Content */}
+      <Text style={styles.title}>{lesson.title}</Text>
+      <Text style={styles.content}>{lesson.content}</Text>
+      <Text style={styles.conclusion}>{lesson.conclusion}</Text>
 
-      {/* ✅ Quiz Section */}
+      {/* Quiz Section */}
       <Text style={styles.quizTitle}>📝 Quiz</Text>
-      {lesson?.quiz.map((q, index) => (
+      {lesson.quiz.map((q, index) => (
         <View key={index} style={styles.questionBlock}>
           <Text style={styles.question}>{index + 1}. {q.question}</Text>
           {q.options.map((option, i) => (

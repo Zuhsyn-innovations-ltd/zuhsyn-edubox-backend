@@ -1,8 +1,11 @@
-import 'react-native-gesture-handler'; 
-import React from 'react';
+import 'react-native-gesture-handler';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { initDB } from './utils/database';
+import { seedInitialData, getCurrentUser } from './utils/dbHelpers';
+import { AuthProvider, AuthContext } from './src/context/AuthContext';
 
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
@@ -48,34 +51,68 @@ const DrawerNavigator = () => (
 );
 
 const App = () => {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-        {/* Auth & Initial Screens */}
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="AboutCompany" component={AboutCompanyScreen} />
-        {/* Lesson Details & Subjects (accessed from drawer or subject screens) */}
-        <Stack.Screen name="EnglishSubject" component={EnglishSubjectScreen} />
-        <Stack.Screen name="EnglishLessonDetail" component={EnglishLessonDetailScreen} />
-        <Stack.Screen name="MathsSubject" component={MathsSubjectScreen} />
-        <Stack.Screen name="MathsLessonDetail" component={MathsLessonDetailScreen} />
-        <Stack.Screen name="PhysicsSubject" component={PhysicsSubjectScreen} />
-        <Stack.Screen name="PhysicsLessonDetail" component={PhysicsLessonDetailScreen} />
-        <Stack.Screen name="ChemistrySubject" component={ChemistrySubjectScreen} />
-        <Stack.Screen name="ChemistryLessonDetail" component={ChemistryLessonDetailScreen} />
-        <Stack.Screen name="BiologySubject" component={BiologySubjectScreen} />
-        <Stack.Screen name="BiologyLessonDetail" component={BiologyLessonDetailScreen} />
-        <Stack.Screen name="AgricSubject" component={AgricSubjectScreen} />
-        <Stack.Screen name="AgricLessonDetail" component={AgricLessonDetailScreen} />
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-        {/* App Drawer (dashboard, subjects, etc.) */}
-        <Stack.Screen name="Main" component={DrawerNavigator} />
-      </Stack.Navigator>
-    </NavigationContainer>
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        // Initialize DB
+        await initDB();
+        // Seed offline data
+        await seedInitialData();
+        // Check if user already logged in
+        const user = await getCurrentUser();
+        setIsLoggedIn(!!user);
+      } catch (err) {
+        console.error('App init error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initApp();
+  }, []);
+
+  if (loading) {
+    return <SplashScreen />;
+  }
+
+  return (
+    <AuthProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isLoggedIn ? (
+            <>
+              {/* Main App Drawer */}
+              <Stack.Screen name="Main" component={DrawerNavigator} />
+              {/* Lesson Details */}
+              <Stack.Screen name="EnglishSubject" component={EnglishSubjectScreen} />
+              <Stack.Screen name="EnglishLessonDetail" component={EnglishLessonDetailScreen} />
+              <Stack.Screen name="MathsSubject" component={MathsSubjectScreen} />
+              <Stack.Screen name="MathsLessonDetail" component={MathsLessonDetailScreen} />
+              <Stack.Screen name="PhysicsSubject" component={PhysicsSubjectScreen} />
+              <Stack.Screen name="PhysicsLessonDetail" component={PhysicsLessonDetailScreen} />
+              <Stack.Screen name="ChemistrySubject" component={ChemistrySubjectScreen} />
+              <Stack.Screen name="ChemistryLessonDetail" component={ChemistryLessonDetailScreen} />
+              <Stack.Screen name="BiologySubject" component={BiologySubjectScreen} />
+              <Stack.Screen name="BiologyLessonDetail" component={BiologyLessonDetailScreen} />
+              <Stack.Screen name="AgricSubject" component={AgricSubjectScreen} />
+              <Stack.Screen name="AgricLessonDetail" component={AgricLessonDetailScreen} />
+              <Stack.Screen name="AboutCompany" component={AboutCompanyScreen} />
+            </>
+          ) : (
+            <>
+              {/* Auth Screens */}
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+              <Stack.Screen name="AboutCompany" component={AboutCompanyScreen} />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
   );
 };
 

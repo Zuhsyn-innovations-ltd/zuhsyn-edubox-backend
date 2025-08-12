@@ -1,10 +1,15 @@
 // screens/BiologyLessonDetailScreen.js
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState, useContext} from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert} from 'react-native';
+import Colors from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import HeaderTitle from '../components/HeaderTitle'; 
+import HeaderTitle from '../components/HeaderTitle'; // Shared header
+import { AuthContext } from '../context/AuthContext'; 
+import { getDBConnection, getLessons, insertLesson, saveUserScoreOffline } from '../utils/dbHelper';
+
+// Our existing lessons (hardcoded fallback)
 
 const lessons = [
   {
@@ -896,12 +901,22 @@ Agricultural economics deals with the application of economic principles to the 
 
 const BiologyLessonDetailScreen = ({ route }) => {
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext); // get logged-in user from context
   const { topicIndex } = route.params;
-  const lesson =    lessons[topicIndex];
+  const lesson = agricLessons[topicIndex];
 
-  const handleAnswer = (userAnswer, correctAnswer) => {
-    if (userAnswer === correctAnswer) {
+  const handleAnswer = async (userAnswer, correctAnswer) => {
+    const isCorrect = userAnswer === correctAnswer;
+
+    if (isCorrect) {
       Alert.alert('✅ Correct!', 'Great job!');
+
+      try {
+        // Save score locally in SQLite or your offline DB
+        await saveUserScoreOffline(user?.id, 'Biology', 5);
+      } catch (error) {
+        console.log('Offline score save failed:', error.message || error);
+      }
     } else {
       Alert.alert('❌ Incorrect', `The correct answer is: ${correctAnswer}`);
     }
@@ -909,7 +924,7 @@ const BiologyLessonDetailScreen = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* 🔵 Header with back button */}
+      {/* Blue header with back button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#fff" />
@@ -917,14 +932,14 @@ const BiologyLessonDetailScreen = ({ route }) => {
         <Text style={styles.headerTitle}>Lesson</Text>
       </View>
 
-      {/* ✅ Lesson Content */}
-      <Text style={styles.title}>{lesson?.title}</Text>
-      <Text style={styles.content}>{lesson?.content}</Text>
-      <Text style={styles.conclusion}>{lesson?.conclusion}</Text>
+      {/* Lesson Content */}
+      <Text style={styles.title}>{lesson.title}</Text>
+      <Text style={styles.content}>{lesson.content}</Text>
+      <Text style={styles.conclusion}>{lesson.conclusion}</Text>
 
-      {/* ✅ Quiz Section */}
+      {/* Quiz Section */}
       <Text style={styles.quizTitle}>📝 Quiz</Text>
-      {lesson?.quiz.map((q, index) => (
+      {lesson.quiz.map((q, index) => (
         <View key={index} style={styles.questionBlock}>
           <Text style={styles.question}>{index + 1}. {q.question}</Text>
           {q.options.map((option, i) => (
@@ -983,7 +998,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#2E7D32',
+    color: '#001f54',
   },
   questionBlock: { marginBottom: 20 },
   question: { fontSize: 16, fontWeight: '600', marginBottom: 5 },

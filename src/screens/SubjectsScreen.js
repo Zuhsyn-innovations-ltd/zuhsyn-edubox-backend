@@ -1,13 +1,81 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import HeaderTitle from '../components/HeaderTitle'; // ✅ Shared header
+import HeaderTitle from '../components/HeaderTitle';
+import { getDBConnection, initDB } from '../utils/database';
 
 const subjects = ['Maths', 'Chemistry', 'English', 'Biology', 'Physics', 'Agric Science'];
 
 const SubjectsScreen = () => {
   const navigation = useNavigation();
+
+  // ✅ Ensure DB is ready when screen mounts
+  useEffect(() => {
+    const setupDB = async () => {
+      try {
+        await initDB();
+      } catch (error) {
+        console.error("Database init error:", error);
+      }
+    };
+    setupDB();
+  }, []);
+
+  const handleSubjectPress = async (subjectName) => {
+    try {
+      const db = await getDBConnection();
+      const tableName = `${subjectName.replace(/\s+/g, '_').toLowerCase()}_lessons`;
+
+      // ✅ Check if lessons exist locally for this subject
+      const results = await db.executeSql(`SELECT COUNT(*) as count FROM ${tableName}`);
+      const count = results[0].rows.item(0).count;
+
+      if (count > 0) {
+        // Lessons found locally → go to subject screen
+        navigateToSubject(subjectName);
+      } else {
+        // No lessons locally → ask if they want to try online
+        Alert.alert(
+          "No Offline Lessons",
+          `No saved lessons for ${subjectName}. You need internet to view lessons.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Go Online", onPress: () => navigateToSubject(subjectName) }
+          ]
+        );
+      }
+    } catch (err) {
+      console.error("Error checking lessons:", err);
+      // If error, still allow navigation (fallback)
+      navigateToSubject(subjectName);
+    }
+  };
+
+  const navigateToSubject = (item) => {
+    switch (item) {
+      case 'Maths':
+        navigation.navigate('MathsSubject');
+        break;
+      case 'English':
+        navigation.navigate('EnglishSubject');
+        break;
+      case 'Chemistry':
+        navigation.navigate('ChemistrySubject');
+        break;
+      case 'Biology':
+        navigation.navigate('BiologySubject');
+        break;
+      case 'Physics':
+        navigation.navigate('PhysicsSubject');
+        break;
+      case 'Agric Science':
+        navigation.navigate('AgricSubject');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -30,37 +98,13 @@ const SubjectsScreen = () => {
         numColumns={2}
         keyExtractor={(item) => item}
         renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => {
-            switch (item) {
-              case 'Maths':
-                navigation.navigate('MathsSubject');
-                break;
-              case 'English':
-                navigation.navigate('EnglishSubject');
-                break;
-              case 'Chemistry':
-                navigation.navigate('ChemistrySubject');
-                break;
-              case 'Biology':
-                navigation.navigate('BiologySubject');
-                break;
-              case 'Physics':
-                navigation.navigate('PhysicsSubject');
-                break;
-              case 'Agric Science':
-                navigation.navigate('AgricSubject');
-                break;
-              default:
-                break;
-            }
-          }}
-        >
-          <Text style={styles.text}>{item}</Text>
-        </TouchableOpacity>
-      )}
-
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleSubjectPress(item)}
+          >
+            <Text style={styles.text}>{item}</Text>
+          </TouchableOpacity>
+        )}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
       />
     </View>

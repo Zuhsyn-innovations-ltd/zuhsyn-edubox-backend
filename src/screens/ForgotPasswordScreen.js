@@ -2,24 +2,39 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import axios from 'axios';
+import { getDBConnection } from '../utils/database'; // ✅ your SQLite connection helper
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
 
   const handleSendResetLink = async () => {
-    try {
-      const response = await axios.post('http://10.0.2.2:8000/api/password-reset/', { email });
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email.');
+      return;
+    }
 
-      Alert.alert(
-        'Success',
-        'If this email exists, a password reset link has been sent to your inbox.'
-      );
-      setEmail('');
-      navigation.navigate('Login');
+    try {
+      const db = await getDBConnection();
+      const results = await db.executeSql(`SELECT * FROM users WHERE email = ?`, [email]);
+
+      if (results[0].rows.length > 0) {
+        // ✅ Email found in local database
+        Alert.alert(
+          'Success',
+          'Email found. You can now reset your password.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('ResetPassword', { email }),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'No account found with this email.');
+      }
     } catch (error) {
-      console.log(error);
-      Alert.alert('Error', 'Something went wrong. Please try again later.');
+      console.log('Error checking email:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
 
@@ -27,7 +42,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Reset Password</Text>
       <Text style={styles.description}>
-        Enter your email address to receive a password reset link.
+        Enter your email address to reset your password.
       </Text>
       <TextInput
         placeholder="Email"
@@ -39,7 +54,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       />
 
       <TouchableOpacity style={styles.resetButton} onPress={handleSendResetLink}>
-        <Text style={styles.resetText}>Send Reset Link</Text>
+        <Text style={styles.resetText}>Verify Email</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.goBack()}>

@@ -1,21 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  Image,
-  ActivityIndicator,
-  SafeAreaView,
-  TouchableOpacity,
-} from 'react-native';
-import axios from 'axios';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
-import HeaderTitle from '../components/HeaderTitle';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import Colors from '../constants/colors';
+import { getLeaderboard } from '../utils/dbHelpers'; // ✅ Pull from SQLite
 
-const LeaderBoardScreen = () => {
-  const navigation = useNavigation();
+const LeaderboardScreen = () => {
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,8 +13,8 @@ const LeaderBoardScreen = () => {
 
   const fetchLeaders = async () => {
     try {
-      const response = await axios.get('http://10.0.2.2:8000/api/leaderboard/');
-      setLeaders(response.data);
+      const data = await getLeaderboard(); // ✅ Offline data
+      setLeaders(data);
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
     } finally {
@@ -34,140 +22,78 @@ const LeaderBoardScreen = () => {
     }
   };
 
-  const renderItem = ({ item, index }) => {
-    const crown =
-      index === 0
-        ? require('../../assets/icons/gold.jpg')
-        : index === 1
-        ? require('../../assets/icons/silver.jpg')
-        : index === 2
-        ? require('../../assets/icons/bronze.jpg')
-        : null;
+  // ✅ Renders each leaderboard row
+  const renderLeader = ({ item, index }) => {
+    let crown = '';
+    if (index === 0) crown = '👑';
+    else if (index === 1) crown = '🥈';
+    else if (index === 2) crown = '🥉';
 
     return (
-      <View style={styles.card}>
-        <View style={styles.rankWrap}>
-          <Text style={styles.rank}>{index + 1}</Text>
-          {crown && <Image source={crown} style={styles.crown} />}
-        </View>
-
-        <Image
-          source={require('../../assets/images/default-avatar.jpg')}
-          style={styles.avatar}
-        />
-
-        <View style={styles.info}>
-          <Text style={styles.username}>{item.username}</Text>
-          <Text style={styles.details}>Level {item.level} • {item.points} pts</Text>
-        </View>
+      <View style={styles.leaderRow}>
+        <Text style={styles.rank}>{index + 1}</Text>
+        <Text style={styles.name}>
+          {item.username} {crown}
+        </Text>
+        <Text style={styles.points}>{item.points}</Text>
       </View>
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#001F54" />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerTitleWrap}>
-          <HeaderTitle />
-        </View>
-      </View>
-
-      {/* Title */}
-      <Text style={styles.screenTitle}>🏆 Leaderboard</Text>
-
-      <FlatList
-        data={leaders}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderItem}
-      />
-    </SafeAreaView>
+    <View style={styles.container}>
+      <Text style={styles.header}>Leaderboard</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} />
+      ) : (
+        <FlatList
+          data={leaders}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderLeader}
+        />
+      )}
+    </View>
   );
 };
 
-export default LeaderBoardScreen;
+export default LeaderboardScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 20,
+    backgroundColor: Colors.background,
   },
-
   header: {
-    backgroundColor: '#001F54',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    marginBottom: 20,
-    borderRadius: 8,
-  },
-  headerTitleWrap: {
-    marginLeft: 10,
-  },
-
-  screenTitle: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#001F54',
-    marginBottom: 15,
-    marginLeft: 5,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: Colors.primary,
   },
-
-  card: {
+  leaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2F6FF',
-    borderRadius: 10,
+    justifyContent: 'space-between',
+    backgroundColor: Colors.card,
     padding: 15,
+    borderRadius: 10,
     marginBottom: 10,
-  },
-  rankWrap: {
-    width: 40,
     alignItems: 'center',
   },
   rank: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: Colors.primary,
   },
-  crown: {
-    width: 20,
-    height: 20,
-    marginTop: 2,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginHorizontal: 15,
-  },
-  info: {
+  name: {
+    fontSize: 18,
     flex: 1,
+    marginLeft: 10,
+    color: Colors.text,
   },
-  username: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#001F54',
-  },
-  details: {
-    fontSize: 14,
-    color: '#666',
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  points: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.secondary,
   },
 });

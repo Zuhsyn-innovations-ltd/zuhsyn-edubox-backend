@@ -1,25 +1,67 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import HeaderTitle from '../components/HeaderTitle'; 
-
-
-const topics = [
-  'Number and Numeration',
-  'Fractions and Decimals',
-  'Basic Operations',
-  'Percentages and Ratios',
-  'Algebraic Expressions',
-  'Equations and Inequalities',
-  'Geometry (Shapes & Angles)',
-  'Mensuration (Area & Volume)',
-  'Statistics and Graphs',
-  'Probability Basics',
-];
+import { getDBConnection } from '../utils/database'; // ✅ SQLite DB connection
 
 const MathsSubjectScreen = () => {
   const navigation = useNavigation();
+  const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTopics = async () => {
+      try {
+        const db = await getDBConnection();
+        const results = await db.executeSql(`SELECT * FROM maths_topics ORDER BY id ASC`);
+        
+        if (results[0].rows.length > 0) {
+          const loadedTopics = [];
+          for (let i = 0; i < results[0].rows.length; i++) {
+            loadedTopics.push(results[0].rows.item(i).title);
+          }
+          setTopics(loadedTopics);
+        } else {
+
+          // ✅ Insert default topics if DB is empty
+          const defaultTopics = [
+            'Number and Numeration',
+            'Fractions and Decimals',
+            'Basic Operations',
+            'Percentages and Ratios',
+            'Algebraic Expressions',
+            'Equations and Inequalities',
+            'Geometry (Shapes & Angles)',
+            'Mensuration (Area & Volume)',
+            'Statistics and Graphs',
+            'Probability Basics',
+          ];
+
+          for (const topic of defaultTopics) {
+            await db.executeSql(`INSERT INTO maths_topics (title) VALUES (?);`, [topic]);
+          }
+          setTopics(defaultTopics);
+        }
+      } catch (error) {
+        console.error("Error loading topics:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTopics();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color="#001F54" />
+        <Text>Loading topics...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -95,5 +137,11 @@ const styles = StyleSheet.create({
   topicText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

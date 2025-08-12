@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
-import axios from 'axios';
+import { createUser, getUserByEmail } from '../utils/dbHelpers'; // <-- SQLite helpers
 
 const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -9,24 +9,33 @@ const RegisterScreen = ({ navigation }) => {
   const [password2, setPassword2] = useState('');
 
   const handleRegister = async () => {
+    if (!name || !email || !password1 || !password2) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
     if (password1 !== password2) {
-      return Alert.alert("Error", "Passwords do not match");
+      Alert.alert("Error", "Passwords do not match");
+      return;
     }
 
     try {
-      const response = await axios.post('http://10.0.2.2:8000/api/register/', {
-        name,
-        email,
-        password: password1,
-      });
-
-      if (response.status === 201) {
-        Alert.alert("✅ Success", "Registration complete. Please login.");
-        navigation.replace('Login');
+      // Check if user already exists
+      const existingUser = await getUserByEmail(email.trim());
+      if (existingUser) {
+        Alert.alert("Error", "Email already registered");
+        return;
       }
+
+      // Create new user in SQLite
+      await createUser(name.trim(), email.trim(), password1);
+
+      Alert.alert("✅ Success", "Registration complete. Please login.");
+      navigation.replace('Login');
+
     } catch (error) {
-      console.log(error.response?.data);
-      Alert.alert("Registration Failed", JSON.stringify(error.response?.data));
+      console.error("Registration error:", error);
+      Alert.alert("Registration Failed", "Something went wrong. Please try again.");
     }
   };
 

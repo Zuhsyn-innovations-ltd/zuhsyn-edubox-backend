@@ -1,10 +1,10 @@
+// src/screens/ProfileScreen.js
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HeaderTitle from '../components/HeaderTitle';
-import axios from 'axios';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -16,12 +16,16 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const storedName = await AsyncStorage.getItem('user_name');
-      const storedEmail = await AsyncStorage.getItem('user_email');
-      const storedPhone = await AsyncStorage.getItem('user_phone');
-      setName(storedName || '');
-      setEmail(storedEmail || '');
-      setPhone(storedPhone || '');
+      try {
+        const storedName = await AsyncStorage.getItem('user_name');
+        const storedEmail = await AsyncStorage.getItem('user_email');
+        const storedPhone = await AsyncStorage.getItem('user_phone');
+        setName(storedName || '');
+        setEmail(storedEmail || '');
+        setPhone(storedPhone || '');
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
     };
     loadUser();
   }, []);
@@ -32,21 +36,18 @@ const ProfileScreen = () => {
     }
 
     try {
-      const token = await AsyncStorage.getItem('access_token');
-      const response = await axios.put(
-        'http://10.0.2.2:8000/api/profile/update/',
-        { name, phone, password: password || null },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await AsyncStorage.setItem('user_name', name);
+      await AsyncStorage.setItem('user_phone', phone);
 
-      if (response.status === 200) {
-        await AsyncStorage.setItem('user_name', name);
-        await AsyncStorage.setItem('user_phone', phone);
-        Alert.alert('✅ Success', 'Profile updated successfully');
+      // If password is changed, store it locally (hashing recommended)
+      if (password) {
+        await AsyncStorage.setItem('user_password', password);
       }
+
+      Alert.alert('✅ Success', 'Profile updated locally');
     } catch (err) {
-      console.log(err.response?.data || err.message);
-      Alert.alert('Update Failed', 'Something went wrong');
+      console.error('Error updating profile:', err);
+      Alert.alert('Update Failed', 'Something went wrong while saving');
     }
   };
 
@@ -115,7 +116,6 @@ export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-
   header: {
     backgroundColor: '#001F54',
     flexDirection: 'row',

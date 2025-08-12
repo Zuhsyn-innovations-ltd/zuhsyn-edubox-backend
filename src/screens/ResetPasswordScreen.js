@@ -1,42 +1,105 @@
 // src/screens/ResetPasswordScreen.js
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, TextInput, Button, Alert, StyleSheet, Platform, ToastAndroid,
+} from 'react-native';
+import {
+  getCurrentUser,
+  verifyUserPassword,
+  updateUserPassword,
+  logoutUser,
+} from '../utils/dbHelpers';
 
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
-import axios from 'axios';
-
-const ResetPasswordScreen = ({ route, navigation }) => {
-  const { uid, token } = route.params;
+const ResetPasswordScreen = ({ navigation }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleReset = async () => {
+  useEffect(() => {
+    const loadUser = async () => {
+      const u = await getCurrentUser();
+      setCurrentUser(u); // null if no session
+    };
+    loadUser();
+  }, []);
+
+  const showToast = (msg) => {
+    if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT);
+    else Alert.alert(msg);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentUser) {
+      Alert.alert('Not logged in', 'You must be logged in to change your password.');
+      return;
+    }
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      return Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
     }
 
+    setLoading(true);
     try {
-      const response = await axios.post('http://10.0.2.2:8000/api/reset-password/', {
-        uid,
-        token,
-        new_password: newPassword,
-      });
-
-      if (response.status === 200) {
-        Alert.alert('Success', 'Password has been reset.');
-        navigation.replace('Login'); // Or navigate to login screen
+      // Verify old password
+      const ok = await verifyUserPassword(currentUser.email, oldPassword);
+      if (!ok) {
+        Alert.alert('Error', 'Current password is incorrect.');
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.log(error.response?.data);
-      Alert.alert('Failed', error.response?.data?.error || 'Something went wrong.');
+
+      // Update password in local DB
+      await updateUserPassword(currentUser.id, newPassword);
+
+      // For security, log the user out and ask to login again
+      await logoutUser();
+
+      showToast('✅ Password updated. Please login again.');
+      navigation.replace('Login');
+    } catch (err) {
+      console.error('Password change error:', err);
+      Alert.alert('Error', 'Could not update password. Try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (!currentUser) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Change Password</Text>
+        <Text style={styles.info}>
+          You must be logged in to change your password. Please login first.
+        </Text>
+
+        <View style={{ marginTop: 20 }}>
+          <Button title="Go to Login" color="#001F54" onPress={() => navigation.replace('Login')} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Reset Your Password</Text>
+      <Text style={styles.title}>Change Password</Text>
+      <Text style={styles.sub}>Account: {currentUser.email}</Text>
 
       <TextInput
-        placeholder="New Password"
+        placeholder="Current password"
+        secureTextEntry
+        style={styles.input}
+        value={oldPassword}
+        onChangeText={setOldPassword}
+      />
+
+      <TextInput
+        placeholder="New password"
         secureTextEntry
         style={styles.input}
         value={newPassword}
@@ -44,14 +107,21 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       />
 
       <TextInput
-        placeholder="Confirm New Password"
+        placeholder="Confirm new password"
         secureTextEntry
         style={styles.input}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
 
-      <Button title="Reset Password" color="#001F54" onPress={handleReset} />
+      <View style={{ marginTop: 10 }}>
+        <Button
+          title={loading ? 'Updating...' : 'Update Password'}
+          color="#001F54"
+          onPress={handleChangePassword}
+          disabled={loading}
+        />
+      </View>
     </View>
   );
 };
@@ -60,6 +130,8 @@ export default ResetPasswordScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#001F54', textAlign: 'center' },
-  input: { borderWidth: 1, borderRadius: 5, padding: 10, marginBottom: 15 },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, color: '#001F54', textAlign: 'center' },
+  sub: { fontSize: 14, color: '#333', marginBottom: 20, textAlign: 'center' },
+  info: { fontSize: 16, color: '#444', textAlign: 'center' },
+  input: { borderWidth: 1, borderRadius: 5, padding: 10, marginBottom: 12, borderColor: '#ccc' },
 });

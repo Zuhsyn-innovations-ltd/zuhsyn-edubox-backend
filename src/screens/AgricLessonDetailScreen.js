@@ -1,10 +1,15 @@
 // screens/AgricLessonDetailScreen.js
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState, useContext} from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert} from 'react-native';
+import Colors from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import HeaderTitle from '../components/HeaderTitle'; // ✅ Shared header
+import HeaderTitle from '../components/HeaderTitle'; // Shared header
+import { AuthContext } from '../context/AuthContext'; 
+import { getDBConnection, getLessons, insertLesson, saveUserScoreOffline } from '../utils/dbHelper';
+
+// Our existing lessons (hardcoded fallback)
 
 const agricLessons = [
   {
@@ -441,12 +446,22 @@ Agricultural extension is a service that provides rural farmers with knowledge a
 
 const AgricLessonDetailScreen = ({ route }) => {
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext); // get logged-in user from context
   const { topicIndex } = route.params;
   const lesson = agricLessons[topicIndex];
 
-  const handleAnswer = (userAnswer, correctAnswer) => {
-    if (userAnswer === correctAnswer) {
+  const handleAnswer = async (userAnswer, correctAnswer) => {
+    const isCorrect = userAnswer === correctAnswer;
+
+    if (isCorrect) {
       Alert.alert('✅ Correct!', 'Great job!');
+
+      try {
+        // Save score locally in SQLite or your offline DB
+        await saveUserScoreOffline(user?.id, 'Agricultural Science', 5);
+      } catch (error) {
+        console.log('Offline score save failed:', error.message || error);
+      }
     } else {
       Alert.alert('❌ Incorrect', `The correct answer is: ${correctAnswer}`);
     }
@@ -454,7 +469,7 @@ const AgricLessonDetailScreen = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* ✅ Blue header with back button */}
+      {/* Blue header with back button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#fff" />
@@ -462,12 +477,12 @@ const AgricLessonDetailScreen = ({ route }) => {
         <Text style={styles.headerTitle}>Lesson</Text>
       </View>
 
-      {/* ✅ Lesson Content */}
+      {/* Lesson Content */}
       <Text style={styles.title}>{lesson.title}</Text>
       <Text style={styles.content}>{lesson.content}</Text>
       <Text style={styles.conclusion}>{lesson.conclusion}</Text>
 
-      {/* ✅ Quiz Section */}
+      {/* Quiz Section */}
       <Text style={styles.quizTitle}>📝 Quiz</Text>
       {lesson.quiz.map((q, index) => (
         <View key={index} style={styles.questionBlock}>
