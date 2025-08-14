@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Colors from '../constants/colors';
-import { getCurrentUser } from '../utils/dbHelpers';
+import { getCurrentUser } from '../utils/dbHelper';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {

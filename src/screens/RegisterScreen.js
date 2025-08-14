@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
-import { createUser, getUserByEmail } from '../utils/dbHelpers'; // <-- SQLite helpers
+import { createUser, getUserByEmail } from '../utils/dbHelper'; // <-- SQLite helpers
 
 const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState('');

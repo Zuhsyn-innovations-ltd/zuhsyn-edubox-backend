@@ -10,7 +10,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import HeaderTitle from '../components/HeaderTitle';
-import db from '../helpers/dbhelper'; // ✅ Import SQLite helper
+import db from '../utils/dbHelper'; // ✅ Import SQLite helper
 
 const DashboardScreen = () => {
   const navigation = useNavigation();

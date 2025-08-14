@@ -8,7 +8,7 @@ import {
   verifyUserPassword,
   updateUserPassword,
   logoutUser,
-} from '../utils/dbHelpers';
+} from '../utils/dbHelper';
 
 const ResetPasswordScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);

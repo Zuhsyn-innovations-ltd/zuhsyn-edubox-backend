@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import Colors from '../constants/colors';
-import { getLeaderboard } from '../utils/dbHelpers'; // ✅ Pull from SQLite
+import { getLeaderboard } from '../utils/dbHelper'; // ✅ Pull from SQLite
 
 const LeaderboardScreen = () => {
   const [leaders, setLeaders] = useState([]);
